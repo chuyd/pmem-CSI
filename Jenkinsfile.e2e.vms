@@ -1,0 +1,51 @@
+pipeline {
+  agent {
+    node {
+      label 'bare-metal'
+    }
+  }
+  environment {
+    BUILD_USER = 'clear'
+    CI_ID = "${env.BUILD_TAG}"
+    KUBECONFIG = "${env.HOME}/.kube/config-${env.BUILD_TAG}"
+  }
+  stages {
+    stage('Build Images') {
+      steps {
+        sh "sed -i 's|canary|$CI_ID|' Makefile"
+        sh 'docker run --rm -v $PWD:/go/src/github.com/intel/pmem-csi -v /var/run/docker.sock:/var/run/docker.sock pmem-csi-ci:go-alpine make build-images'
+      }
+    }
+    stage('Setup K8s') {
+      steps {
+	sh '$HOME/dev/k8s/ci-scripts/deploy-k8s.sh $CI_ID $HOME/vms/images/clear-latest-cloud.img  $BUILD_USER'
+  sh 'docker run --rm -v $KUBECONFIG:/tmp/kube/config -e KUBECONFIG=/tmp/kube/config pmem-csi-ci:go-alpine kubectl get pods --all-namespaces'
+      }
+    }
+    stage('Setup pmem-CSI driver and Quick E2E') {
+      steps {
+	sh '$HOME/dev/k8s/ci-scripts/e2e-pmem.sh $CI_ID $BUILD_USER'
+      }
+    }
+    stage('E2E') {
+      steps {
+        echo 'Running E2E'
+        sh 'docker run --rm -v $KUBECONFIG:/tmp/kube/config -v $PWD:/go/src/github.com/intel/pmem-csi -e TEST_DEVICEMODE=lvm -e KUBECONFIG=/tmp/kube/config -e REPO_ROOT=/go/src/github.com/intel/pmem-csi pmem-csi-ci:go-alpine go test -count=1 -timeout 0 -v ./test/e2e'
+      }
+    }
+    stage('VMs Clean') {
+      steps {
+	sh 'govm list | grep $CI_ID | awk \'{print $2}\' | xargs -n1 -P10 govm remove'
+      }
+    }
+  }
+  post {
+      always {
+         sh 'docker run --rm -v `pwd`:/go/src/github.com/intel/pmem-csi pmem-csi-ci:go-alpine make clean'
+	 sh 'docker run --rm -v `pwd`:/go/src/github.com/intel/pmem-csi pmem-csi-ci:go-alpine rm -rf _work'
+	 deleteDir()
+	 sh 'govm list | grep $CI_ID | awk \'{print $4}\' | xargs -n1 -P10 govm remove | echo'
+	 sh 'rm -f $HOME/.kube/config-build-$CI_ID  $HOME/.kube/config-$CI_ID '
+      }
+  }
+}
