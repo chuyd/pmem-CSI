@@ -605,49 +605,21 @@ Use the `make test` command.
 ### QEMU and Kubernetes
 
 E2E testing relies on a cluster running inside multiple QEMU virtual
-machines. The same cluster can also be used interactively when
-real hardware is not available.
+machines deployed by govm. The same cluster can also be used interactively
+when real hardware is not available.
 
 This is known to work on a Linux development host system.
-The `qemu-system-x86_64` binary must be installed, either from
-[upstream QEMU](https://www.qemu.org/) or the Linux distribution.
 The user must be able to run commands as root via `sudo`.
-For networking, the `ip` tool from the `iproute2` package must be
-installed. The following command must be run once after booting the
-host machine and before starting the virtual machine:
-
-    test/runqemu-ifup 4
-
-This configures four tap devices for use by the current user. At the
-moment, the test setup uses:
-
-- `pmemtap0/1/2/3`
-- `pmembr0`
-- 192.168.8.1 for the build host side of the bridge interfaces
-- 192.168.8.2/4/6/8 for the virtual machines
-- the same DNS server for the virtual machines as on the development
-  host
-
-It is possible to configure this by creating one or more files ending
-in `.sh` (for shell) in the directory `test/test-config.d` and setting
-shell variables in those files. For all supported options, see
-[test-config.sh](test/test-config.sh).
-
-To undo the configuration changes made by `test/runqemu-ifup` when
-the tap device is no longer needed, run:
-
-    test/runqemu-ifdown
 
 KVM must be enabled and the user must be allowed to use it. Usually this
 is done by adding the user to the `kvm` group. The
 ["Install QEMU-KVM"](https://clearlinux.org/documentation/clear-linux/get-started/virtual-machine-install/kvm)
 section in the Clear Linux documentation contains further information
-about enabling KVM and installing QEMU.
+about enabling KVM.
 
-The `clear-kvm` images are prepared automatically by the Makefile. By
-default, four different images are prepared. Each image is pre-configured with
-its own hostname and with network settings for the corresponding `tap`
-device.
+The `clear-kvm` image is downloaded automatically. By default,
+four different virtual machines are prepared. Each image is pre-configured
+with its own hostname and with network.
 
 The images will contain the latest
 [Clear Linux OS](https://clearlinux.org/) and have the Kubernetes
@@ -656,9 +628,9 @@ version supported by Clear Linux installed.
 ### Starting and stopping a test cluster
 
 `make start` will bring up a Kubernetes test cluster inside four QEMU
-virtual machines. It can be called multiple times in a row and will
-attempt to bring up missing pieces each time it is invoked.
-The first node `host-0` is the Kubernetes master without persistent memory.
+virtual machines.
+The first node `k8s-test-pmem-master` is the Kubernetes master without
+persistent memory.
 The other three nodes are worker nodes with one emulated 32GB NVDIMM each.
 After the cluster has been formed, `make start` adds `storage=pmem` label
 to the worker nodes and deploys the PMEM-CSI driver.
@@ -667,8 +639,7 @@ Once `make start` completes, the cluster is ready for interactive use via
 set `KUBECONFIG` as shown at the end of the `make start` output
 and use `kubectl` binary on the host running VMs.
 
-Use `make stop` to stop the virtual machines. The cluster state
-remains preserved and will be restored after next `make start`.
+Use `make stop` to stop and remove the virtual machines.
 
 The DeviceMode (lvm or direct) used in testing is selected using variable TEST_DEVICEMODE in [test-config.sh](test/test-config.sh).
 
@@ -678,10 +649,10 @@ The DeviceMode (lvm or direct) used in testing is selected using variable TEST_D
 test cluster node which are handy for running a single command or to
 start interactive shell. Examples:
 
-`_work/clear-kvm/ssh.0 kubectl get pods` runs a kubectl command on
-node-0 which is cluster master.
+`_work/clear-kvm/k8s-test-pmem-master kubectl get pods` runs a kubectl command on
+k8s-test-pmem-master which is cluster master.
 
-`_work/clear-kvm/ssh.1` starts a shell on node-1.
+`_work/clear-kvm/ssh-k8s-test-pmem-worker1` starts a shell on k8s-test-pmem-worker-1.
 
 ### Running E2E tests
 
