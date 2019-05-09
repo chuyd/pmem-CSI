@@ -1,6 +1,9 @@
 # This file is meant to be sourced into various scripts in this directory and provides
 # some common settings.
 
+# Cluster directory name where the deployment files will be stored
+CLUSTER=clear-kvm
+
 # The container runtime that is meant to be used inside Clear Linux.
 # Possible values are "docker" and "crio".
 #
@@ -9,22 +12,9 @@
 # - Docker mounts /sys read/write while cri-o read-only. pmem-csi needs it in writable state.
 TEST_CRI=docker
 
-# Prefix for network devices etc.
-TEST_PREFIX=pmemcsi
-
-# IPv4 base address. .1 is used for the host, which also acts
-# as NAT gateway. Even numbers are for the guests (.2, .4, ...).
-TEST_IP_ADDR=192.168.8
-
-# IP addresses of DNS servers to use inside the VMs, separated by spaces.
-# The default is to use the ones specified in /etc/resolv.conf, but those
-# might not be reachable from inside the VMs (like for example, 127.0.0.53
-# from systemd-network).
-TEST_DNS_SERVERS=
-
 # Additional insecure registries (for example, my-registry:5000),
 # separated by spaces.
-TEST_INSECURE_REGISTRIES=
+TEST_INSECURE_REGISTRIES=""
 
 # Additional Clear Linux bundles.
 TEST_CLEAR_LINUX_BUNDLES="storage-utils"
@@ -40,9 +30,6 @@ TEST_CONFIGURE_POST_MASTER=
 TEST_CONFIGURE_POST_ALL=
 
 # PMEM NVDIMM configuration.
-#
-# When changing PMEM size after booting the VMs already, _work/*.pmem.raw must
-# get deleted to re-initialize the PMEM.
 #
 # See https://github.com/qemu/qemu/blob/bd54b11062c4baa7d2e4efadcf71b8cfd55311fd/docs/nvdimm.txt
 # for details about QEMU simulated PMEM.
